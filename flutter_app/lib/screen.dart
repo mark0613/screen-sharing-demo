@@ -78,10 +78,10 @@ class _ScreenSharePageState extends State<ScreenSharePage> {
           break;
         case 'onScreenData':
           if (socket.connected && deviceId.isNotEmpty) {
-            final String base64Image = call.arguments['imageData'];
+            final Uint8List imageBytes = call.arguments['imageBytes'];
             socket.emit('screen-data', {
               'deviceId': deviceId,
-              'frameData': 'data:image/jpeg;base64,$base64Image',
+              'frameData': imageBytes,
             });
           }
           break;

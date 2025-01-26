@@ -126,15 +126,11 @@ class ScreenCaptureService : Service() {
 
                 val outputStream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
-                val base64Image = Base64.encodeToString(
-                    outputStream.toByteArray(),
-                    Base64.DEFAULT
-                )
+                val imageBytes = outputStream.toByteArray()
 
-                // Send to Flutter via MethodChannel on main thread
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     methodChannel?.invokeMethod("onScreenData", mapOf(
-                        "imageData" to base64Image
+                        "imageBytes" to imageBytes
                     ))
                 }
 

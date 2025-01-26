@@ -14,6 +14,7 @@ const io = new Server(http, {
         methods: ['GET', 'POST'],
     },
     transports: ['polling', 'websocket'],
+    maxHttpBufferSize: 1e8,
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,9 +54,14 @@ io.on('connection', (socket) => {
             device.screenData = data;
             device.lastActive = new Date();
 
+            // 將 binary data 轉換為 Blob URL
+            const frameData = Buffer.from(data.frameData);
             socket.broadcast.emit('screen-update', {
                 deviceId: socket.id,
-                data,
+                data: {
+                    frameData,
+                    type: 'image/jpeg',
+                },
             });
         }
     });

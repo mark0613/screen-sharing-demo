@@ -59,18 +59,26 @@
             });
         });
 
-        socket.on('screen-update', ({deviceId, data}) => {
+        socket.on('screen-update', ({ deviceId, data }) => {
             console.log('Received screen update for device:', deviceId);
-            console.log('Screen data:', data);
             
             const trackInfo = document.querySelector(`#track-${deviceId}`);
             const screenView = document.querySelector(`#screen-${deviceId}`);
+            
             if (trackInfo) {
                 trackInfo.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
             }
             
             if (screenView && data.frameData) {
-                screenView.src = data.frameData;
+                // 將接收到的 binary data 轉換為 Blob URL
+                const blob = new Blob([data.frameData], { type: data.type });
+                const imageUrl = URL.createObjectURL(blob);
+                
+                screenView.src = imageUrl;
+                
+                // 清理舊的 URL 物件
+                URL.revokeObjectURL(screenView.dataset.previousUrl);
+                screenView.dataset.previousUrl = imageUrl;
             }
         });
 
@@ -98,6 +106,16 @@
             `;
             return card;
         }
+
+        // 在頁面關閉或元件移除時清理 Blob URLs
+        window.addEventListener('beforeunload', () => {
+            const images = document.querySelectorAll('.screen-view');
+            images.forEach(img => {
+                if (img.dataset.previousUrl) {
+                    URL.revokeObjectURL(img.dataset.previousUrl);
+                }
+            });
+        });
     </script>
 </body>
 </html>
