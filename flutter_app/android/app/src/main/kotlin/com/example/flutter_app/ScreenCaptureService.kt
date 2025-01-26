@@ -125,7 +125,7 @@ class ScreenCaptureService : Service() {
                 bitmap.copyPixelsFromBuffer(buffer)
 
                 val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
+                bitmap.compress(Bitmap.CompressFormat.WEBP, 70, outputStream)
                 val imageBytes = outputStream.toByteArray()
 
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
