@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:async';
 import 'utils.dart';
 
 class ScreenSharePage extends StatefulWidget {
@@ -13,28 +14,30 @@ class ScreenSharePage extends StatefulWidget {
 }
 
 class _ScreenSharePageState extends State<ScreenSharePage> {
-  static const platform =
-      MethodChannel('com.example.flutter_app/screen_capture');
+  static const _methodChannel = MethodChannel('com.example.flutter_app/screen_control');
+  static const _eventChannel = EventChannel('com.example.flutter_app/screen_stream');
+  
   bool isSharing = false;
   late IO.Socket socket;
   String deviceId = '';
   String lastError = '';
+  StreamSubscription<dynamic>? _screenSubscription;
 
   @override
   void initState() {
     super.initState();
     _initSocket();
-    _setupMethodChannel();
+    _initEventChannel();
   }
 
   @override
   void dispose() {
+    _screenSubscription?.cancel();
     socket.dispose();
     super.dispose();
   }
 
   void _initSocket() async {
-    // HACK: hardcode the server IP address
     socket = IO.io('http://10.0.2.2:3000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
@@ -61,37 +64,50 @@ class _ScreenSharePageState extends State<ScreenSharePage> {
     });
   }
 
-  void _setupMethodChannel() {
-    platform.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'onScreenCaptureStarted':
-          setState(() {
-            isSharing = true;
-            lastError = '';
-          });
-          break;
-        case 'onScreenCaptureDenied':
-          setState(() {
-            isSharing = false;
-            lastError = '螢幕擷取權限被拒絕';
-          });
-          break;
-        case 'onScreenData':
-          if (socket.connected && deviceId.isNotEmpty) {
-            final Uint8List imageBytes = call.arguments['imageBytes'];
-            socket.emit('screen-data', {
-              'deviceId': deviceId,
-              'frameData': imageBytes,
+  void _initEventChannel() {
+    _screenSubscription = _eventChannel.receiveBroadcastStream().listen(
+      (dynamic event) {
+        switch (event['type']) {
+          case 'started':
+            setState(() {
+              isSharing = true;
+              lastError = '';
             });
-          }
-          break;
+            break;
+          case 'denied':
+            setState(() {
+              isSharing = false;
+              lastError = '螢幕擷取權限被拒絕';
+            });
+            break;
+          case 'stopped':
+            setState(() {
+              isSharing = false;
+              lastError = '';
+            });
+            break;
+          case 'error':
+            setState(() {
+              lastError = event['message'] ?? '未知錯誤';
+              isSharing = false;
+            });
+            break;
+          case 'screenData':
+            if (socket.connected && deviceId.isNotEmpty) {
+              socket.emit('screen-data', {
+                'deviceId': deviceId,
+                'frameData': event['imageBytes'],
+              });
+            }
+            break;
+        }
       }
-    });
+    );
   }
 
   Future<void> _startScreenShare() async {
     try {
-      await platform.invokeMethod('startScreenCapture');
+      await _methodChannel.invokeMethod('startScreenCapture');
     } on PlatformException catch (e) {
       setState(() {
         lastError = '無法啟動螢幕擷取';
@@ -102,11 +118,7 @@ class _ScreenSharePageState extends State<ScreenSharePage> {
 
   Future<void> _stopScreenShare() async {
     try {
-      await platform.invokeMethod('stopScreenCapture');
-      setState(() {
-        isSharing = false;
-        lastError = '';
-      });
+      await _methodChannel.invokeMethod('stopScreenCapture');
     } on PlatformException catch (e) {
       setState(() {
         lastError = '無法停止螢幕擷取';

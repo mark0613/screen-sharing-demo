@@ -14,11 +14,9 @@ import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.IBinder
-import android.util.Base64
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
-import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.util.Timer
 import java.util.TimerTask
@@ -36,7 +34,7 @@ class ScreenCaptureService : Service() {
     private var displayDensity: Int = 0
 
     companion object {
-        var methodChannel: MethodChannel? = null
+        var eventSink: ((Map<String, Any>) -> Unit)? = null
     }
 
     override fun onCreate() {
@@ -129,7 +127,8 @@ class ScreenCaptureService : Service() {
                 val imageBytes = outputStream.toByteArray()
 
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    methodChannel?.invokeMethod("onScreenData", mapOf(
+                    eventSink?.invoke(mapOf(
+                        "type" to "screenData",
                         "imageBytes" to imageBytes
                     ))
                 }
@@ -138,6 +137,12 @@ class ScreenCaptureService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing screen", e)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                eventSink?.invoke(mapOf(
+                    "type" to "error",
+                    "message" to "螢幕擷取錯誤: ${e.message}"
+                ))
+            }
         }
     }
 
