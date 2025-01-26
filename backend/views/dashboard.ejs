@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remote Access Dashboard</title>
+    <style>
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .device-card {
+            border: 1px solid #ccc;
+            padding: 16px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .screen-view {
+            width: 100%;
+            height: 600px;
+            background: #f0f0f0;
+            margin-top: 10px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        .device-info {
+            margin: 10px 0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            font-size: 12px;
+        }
+        .track-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Connected Devices Dashboard</h1>
+    <div id="deviceGrid" class="device-grid"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const deviceGrid = document.getElementById('deviceGrid');
+
+        socket.on('devices-updated', (devices) => {
+            console.log('Devices updated:', devices);
+            deviceGrid.innerHTML = '';
+            devices.forEach(device => {
+                const deviceCard = createDeviceCard(device);
+                deviceGrid.appendChild(deviceCard);
+            });
+        });
+
+        socket.on('screen-update', ({deviceId, data}) => {
+            console.log('Received screen update for device:', deviceId);
+            console.log('Screen data:', data);
+            
+            const trackInfo = document.querySelector(`#track-${deviceId}`);
+            const screenView = document.querySelector(`#screen-${deviceId}`);
+            if (trackInfo) {
+                trackInfo.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            if (screenView && data.frameData) {
+                screenView.src = data.frameData;
+            }
+        });
+
+        function createDeviceCard(device) {
+            const card = document.createElement('div');
+            card.className = 'device-card';
+            
+            const lastActiveTime = new Date(device.lastActive).toLocaleString();
+            
+            card.innerHTML = `
+                <h3>Device ID: ${device.id}</h3>
+                <div class="device-info">
+                    <span class="status-badge">Connected</span>
+                    <p>Last Active: ${lastActiveTime}</p>
+                    ${device.info ? `
+                        <p>Model: ${device.info.model || 'Unknown'}</p>
+                        <p>OS: ${device.info.platform} ${device.info.osVersion || ''}</p>
+                    ` : ''}
+                    <div id="track-${device.id}" class="track-info">Waiting for screen data...</div>
+                </div>
+                <img id="screen-${device.id}" 
+                     class="screen-view" 
+                     src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                     alt="Device Screen">
+            `;
+            return card;
+        }
+    </script>
+</body>
+</html>
