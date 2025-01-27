@@ -13,7 +13,9 @@ import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -51,23 +53,23 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null) return START_NOT_STICKY
-
-        val resultCode = intent.getIntExtra("resultCode", Activity.RESULT_OK)
-        val data = intent.getParcelableExtra<Intent>("data")!!
-        
-        val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        mediaProjection = projectionManager.getMediaProjection(resultCode, data)
-        mediaProjection?.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() {
-                virtualDisplay?.release()
-                imageReader?.close()
-                timer?.cancel()
-                stopSelf()
-            }
-        }, null)
-        setupVirtualDisplay()
-        startCapturing()
+        intent?.let {
+            val resultCode = intent.getIntExtra("resultCode", Activity.RESULT_OK)
+            val data = intent.getParcelableExtra<Intent>("data")!!
+            
+            val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            mediaProjection = projectionManager.getMediaProjection(resultCode, data)
+            mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    virtualDisplay?.release()
+                    imageReader?.close()
+                    timer?.cancel()
+                    stopSelf()
+                }
+            }, null)
+            setupVirtualDisplay()
+            startCapturing()
+        }
 
         return START_NOT_STICKY
     }
@@ -98,12 +100,13 @@ class ScreenCaptureService : Service() {
     }
 
     private fun startCapturing() {
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                captureScreen()
-            }
-        }, 0, 100)  // TODO: modify the interval
+        timer = Timer().apply {
+            scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    captureScreen()
+                }
+            }, 0, 100) // TODO: modify the interval
+        }
     }
 
     private fun captureScreen() {
@@ -122,15 +125,16 @@ class ScreenCaptureService : Service() {
                 )
                 bitmap.copyPixelsFromBuffer(buffer)
 
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.WEBP, 70, outputStream)
-                val imageBytes = outputStream.toByteArray()
+                ByteArrayOutputStream().use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.WEBP, 70, outputStream)
+                    val imageBytes = outputStream.toByteArray()
 
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    eventSink?.invoke(mapOf(
-                        "type" to "screenData",
-                        "imageBytes" to imageBytes
-                    ))
+                    Handler(Looper.getMainLooper()).post {
+                        eventSink?.invoke(mapOf(
+                            "type" to "screenData",
+                            "imageBytes" to imageBytes
+                        ))
+                    }
                 }
 
                 bitmap.recycle()
