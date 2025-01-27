@@ -1,16 +1,34 @@
-# flutter_app
+# Screen Sharing Demo (Flutter)
 
-A new Flutter project.
+## 流程圖
+```mermaid
+sequenceDiagram
+    participant UI as Flutter UI
+    participant Channel as Method/Event Channel
+    participant Activity as MainActivity
+    participant Service as ScreenCaptureService
+    participant Server as Socket Server
 
-## Getting Started
+    %% 啟動螢幕分享
+    Note over UI,Server: 開始分享
+    UI->>Channel: 點擊分享按鈕
+    Channel->>Activity: startScreenCapture()
+    Activity->>Activity: 請求權限
+    Activity->>Service: 啟動服務
+    UI->>Server: 註冊裝置資訊
 
-This project is a starting point for a Flutter application.
+    %% 資料串流
+    Note over UI,Server: 畫面傳輸
+    loop 每 100ms
+        Service->>Service: 取得畫面
+        Service-->>Channel: (影像資料)
+        Channel-->>UI: (影像資料)
+        UI->>Server: socket.emit
+    end
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+    %% 停止分享
+    Note over UI,Server: 停止流程
+    UI->>Channel: 點擊停止按鈕
+    Channel->>Activity: stopScreenCapture()
+    Activity->>Service: stopService()
+```

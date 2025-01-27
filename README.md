@@ -48,3 +48,9 @@
 5. 操作手機
     - 點擊 `開始分享` 就可以到網頁上看到手機畫面
     - 點擊 `停止分享` 就會中斷分享
+
+## 流程參考
+請看各自的 `README.md`
+- [Flutter](flutter_app/README.md)
+- [React Native Expo](rne_app/README.md)
+- [Backend](backend/README.md)
