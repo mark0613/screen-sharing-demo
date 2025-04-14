@@ -22,13 +22,13 @@
     # 啟動指定的 AVD
     emulator -avd <AVD_NAME>
     ```
-2. 啟動後端(擇一)
+2. 啟動後端
     ```bash
     cd backend
     yarn install
     yarn start
     ```
-3. 啟動前端
+3. 啟動前端(擇一)
     - Flutter
         ```bash
         cd flutter_app
